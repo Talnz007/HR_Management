@@ -35,14 +35,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     detail="Invalid authentication scheme",
                     headers={"WWW-Authenticate": "Bearer"}
                 )
-            username = verify_token(token)
-            if username is None:
+            payload = verify_token(token)
+            if payload is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid or expired token",
                     headers={"WWW-Authenticate": "Bearer"}
                 )
-            request.state.user = username
+            request.state.user = payload  # Store full payload instead of just username
         except ValueError:
             logger.warning("Invalid Authorization header format")
             raise HTTPException(

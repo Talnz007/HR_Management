@@ -52,6 +52,5 @@ class Employee(Base):
     department = relationship("Department", back_populates="employees")
     manager = relationship("Employee", remote_side=[employee_id], back_populates="subordinates")
     subordinates = relationship("Employee", back_populates="manager")
-    attendances = relationship("Attendance", back_populates="employee")
     leaves = relationship("Leave", back_populates="employee")
     payrolls = relationship("Payroll", back_populates="employee")

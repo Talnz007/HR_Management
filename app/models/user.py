@@ -11,7 +11,7 @@ class User(Base):
     user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username = Column(String(50), unique=True, index=True, nullable=False)
     email = Column(String(100), unique=True, index=True, nullable=False)
-    phone = Column(String(20), unique=True, nullable=False)  # Added
+    phone = Column(String(20), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -21,3 +21,4 @@ class User(Base):
     employee = relationship("Employee", back_populates="user", uselist=False)
     admin = relationship("Admin", back_populates="user", uselist=False)
     registrations = relationship("Registration", back_populates="user")
+    attendances = relationship("Attendance", back_populates="user")

@@ -20,7 +20,7 @@ class Attendance(Base):
     __tablename__ = "attendances"
 
     attendance_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    employee_id = Column(UUID(as_uuid=True), ForeignKey("employees.employee_id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id"), nullable=False)  # Changed from employee_id
     date = Column(Date, nullable=False)
     clock_in = Column(Time, nullable=True)
     clock_out = Column(Time, nullable=True)
@@ -32,4 +32,4 @@ class Attendance(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
-    employee = relationship("Employee", back_populates="attendances")
+    user = relationship("User", back_populates="attendances")

@@ -63,20 +63,19 @@ def create_refresh_token(data: Dict[str, Any], expires_delta: Optional[timedelta
         logger.error(f"Refresh token creation error: {str(e)}")
         raise
 
-def verify_token(token: str) -> Optional[str]:
-    """Verify a JWT token and return the username."""
+def verify_token(token: str) -> Optional[Dict[str, Any]]:
+    """Verify a JWT token and return the payload."""
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        username: str = payload.get("sub")
         token_type: str = payload.get("type")
-        if username is None or token_type is None:
-            logger.warning("Invalid token: missing username or type")
+        if token_type is None:
+            logger.warning("Invalid token: missing type")
             return None
         # Check if token is revoked
         if redis_client.get(f"revoked_token:{token}"):
             logger.warning(f"Revoked token used: {token}")
             return None
-        return username
+        return payload
     except JWTError as e:
         logger.warning(f"Token verification failed: {str(e)}")
         return None

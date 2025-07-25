@@ -66,8 +66,8 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
             headers={"WWW-Authenticate": "Bearer"}
         )
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = create_access_token(data={"sub": user.username}, expires_delta=access_token_expires)
-    refresh_token = create_refresh_token(data={"sub": user.username})
+    access_token = create_access_token(data={"sub": user.username, "user_id": str(user.user_id)}, expires_delta=access_token_expires)
+    refresh_token = create_refresh_token(data={"sub": user.username, "user_id": str(user.user_id)})
     user.last_login = datetime.now(timezone.utc)
     db.commit()
     logger.info(f"User logged in: {user.username}")
@@ -81,16 +81,17 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
 @router.post("/refresh", response_model=Token)
 def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     """Refresh access token using a refresh token."""
-    username = verify_token(refresh_token)
-    if username is None:
+    payload = verify_token(refresh_token)
+    if payload is None:
         logger.warning("Invalid or expired refresh token")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"}
         )
+    username = payload.get("sub")
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = create_access_token(data={"sub": username}, expires_delta=access_token_expires)
+    access_token = create_access_token(data={"sub": username, "user_id": payload.get("user_id")}, expires_delta=access_token_expires)
     logger.info(f"Access token refreshed for user: {username}")
     return {
         "access_token": access_token,
@@ -100,11 +101,11 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
     }
 
 @router.post("/logout")
-def logout_user(current_user: User = Depends(get_current_user)):
+def logout_user(current_user: dict = Depends(get_current_user)):
     """Revoke the user's access and refresh tokens."""
-    access_token = create_access_token(data={"sub": current_user.username}, expires_delta=timedelta(seconds=1))
-    refresh_token = create_refresh_token(data={"sub": current_user.username}, expires_delta=timedelta(seconds=1))
+    access_token = create_access_token(data={"sub": current_user.get("sub"), "user_id": current_user.get("user_id")}, expires_delta=timedelta(seconds=1))
+    refresh_token = create_refresh_token(data={"sub": current_user.get("sub"), "user_id": current_user.get("user_id")}, expires_delta=timedelta(seconds=1))
     revoke_token(access_token, expires=3600)
     revoke_token(refresh_token, expires=604800)
-    logger.info(f"User logged out: {current_user.username}")
+    logger.info(f"User logged out: {current_user.get('sub')}")
     return {"detail": "Successfully logged out"}

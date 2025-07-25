@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from app.api.deps import require_role
+from app.api.deps import require_role, get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.models.employee import Employee
@@ -19,7 +19,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["employees"])
-
 
 @router.post("/", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
 def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db),
@@ -71,12 +70,10 @@ def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db),
         logger.error(f"Failed to create employee {employee.employee_number}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to create employee")
 
-
 @router.get("/", response_model=List[EmployeeResponse])
 def list_employees(db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin"]))):
     """List all employees (admin only)."""
     return db.query(Employee).all()
-
 
 @router.get("/{employee_id}", response_model=EmployeeResponse)
 def get_employee(employee_id: str, db: Session = Depends(get_db),
@@ -89,7 +86,6 @@ def get_employee(employee_id: str, db: Session = Depends(get_db),
         return employee
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid UUID format")
-
 
 @router.put("/{employee_id}", response_model=EmployeeResponse)
 def update_employee(employee_id: str, employee: EmployeeCreate, db: Session = Depends(get_db),
@@ -113,7 +109,6 @@ def update_employee(employee_id: str, employee: EmployeeCreate, db: Session = De
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid UUID format")
 
-
 @router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_employee(employee_id: str, db: Session = Depends(get_db),
                     current_user: User = Depends(require_role(["admin"]))):
@@ -135,7 +130,6 @@ def delete_employee(employee_id: str, db: Session = Depends(get_db),
         logger.error(f"Failed to delete employee {employee_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to delete employee")
 
-
 @router.post("/leaves", response_model=LeaveResponse, status_code=status.HTTP_201_CREATED)
 def create_leave(leave: LeaveCreate, db: Session = Depends(get_db),
                  current_user: User = Depends(require_role(["admin"]))):
@@ -151,7 +145,6 @@ def create_leave(leave: LeaveCreate, db: Session = Depends(get_db),
         db.rollback()
         logger.error(f"Failed to create leave: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to create leave")
-
 
 @router.post("/attendances", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
 def create_attendance(attendance: AttendanceCreate, db: Session = Depends(get_db),
@@ -169,7 +162,6 @@ def create_attendance(attendance: AttendanceCreate, db: Session = Depends(get_db
         logger.error(f"Failed to create attendance: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to create attendance")
 
-
 @router.post("/payrolls", response_model=PayrollResponse, status_code=status.HTTP_201_CREATED)
 def create_payroll(payroll: PayrollCreate, db: Session = Depends(get_db),
                    current_user: User = Depends(require_role(["admin"]))):
@@ -185,3 +177,11 @@ def create_payroll(payroll: PayrollCreate, db: Session = Depends(get_db),
         db.rollback()
         logger.error(f"Failed to create payroll: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to create payroll")
+
+@router.get("/profile", response_model=EmployeeResponse)
+def get_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Get the current user's profile."""
+    employee = db.query(Employee).filter(Employee.user_id == current_user.user_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return employee
