@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Union
 import uuid
+from datetime import datetime, time, date
+from pytz import timezone as pytz_timezone
 from app.api.deps import get_current_user, require_role
 from app.database import get_db
 from app.models.user import User
 from app.models.attendance import Attendance
 from app.schemas.attendance import AttendanceCreate, AttendanceResponse
-from datetime import datetime, timezone, date, time
-from time import strftime, localtime
 
 router = APIRouter(tags=["attendance"])
 
@@ -20,8 +21,8 @@ def calculate_hours(clock_in: time, clock_out: time, break_start: time = None, b
     if break_start and break_end:
         break_seconds = time_to_seconds(break_end) - time_to_seconds(break_start)
         total_seconds -= break_seconds
-    total_hours = total_seconds / 3600.0
-    overtime_hours = max(total_hours - 8.0, 0.0)
+    total_hours = total_seconds / 3600.0  # Keep exact value
+    overtime_hours = max(total_hours - 8.0, 0.0) if total_hours > 0 else 0.0
     return total_hours, overtime_hours
 
 @router.post("/", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
@@ -33,7 +34,14 @@ def create_attendance(attendance: AttendanceCreate, db: Session = Depends(get_db
     if attendance.attendance_type == "absent" and (attendance.clock_in or attendance.clock_out or attendance.break_start or attendance.break_end or attendance.total_hours or attendance.overtime_hours):
         raise HTTPException(status_code=400, detail="Absent attendance cannot have clock_in, clock_out, break_start, break_end, total_hours, or overtime_hours")
     attendance_data = attendance.model_dump(exclude_unset=True)
-    new_attendance = Attendance(**attendance_data, created_at=datetime.now(timezone.utc))
+    if attendance.clock_in and attendance.clock_out:
+        total_hours, overtime_hours = calculate_hours(
+            attendance.clock_in, attendance.clock_out, attendance.break_start, attendance.break_end
+        )
+        attendance_data["total_hours"] = total_hours
+        attendance_data["overtime_hours"] = overtime_hours
+    pkt = pytz_timezone('Asia/Karachi')
+    new_attendance = Attendance(**attendance_data, created_at=datetime.now(pkt).replace(microsecond=0))
     db.add(new_attendance)
     db.commit()
     db.refresh(new_attendance)
@@ -44,7 +52,7 @@ def list_attendance(db: Session = Depends(get_db), current_user: dict = Depends(
     """List all attendance records (admin only)."""
     return db.query(Attendance).all()
 
-@router.get("/self", response_model=AttendanceResponse)
+@router.get("/self", response_model=Union[AttendanceResponse, dict])
 def get_attendance_self(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Get the current user's attendance for today."""
     attendance = db.query(Attendance).filter(
@@ -81,9 +89,17 @@ def update_attendance(
         raise HTTPException(status_code=404, detail="User not found")
     if attendance.attendance_type == "absent" and (attendance.clock_in or attendance.clock_out or attendance.break_start or attendance.break_end or attendance.total_hours or attendance.overtime_hours):
         raise HTTPException(status_code=400, detail="Absent attendance cannot have clock_in, clock_out, break_start, break_end, total_hours, or overtime_hours")
-    for key, value in attendance.model_dump(exclude_unset=True).items():
+    attendance_data = attendance.model_dump(exclude_unset=True)
+    if attendance.clock_in and attendance.clock_out:
+        total_hours, overtime_hours = calculate_hours(
+            attendance.clock_in, attendance.clock_out, attendance.break_start, attendance.break_end
+        )
+        attendance_data["total_hours"] = total_hours
+        attendance_data["overtime_hours"] = overtime_hours
+    pkt = pytz_timezone('Asia/Karachi')
+    for key, value in attendance_data.items():
         setattr(db_attendance, key, value)
-    db_attendance.updated_at = datetime.now(timezone.utc)
+    db_attendance.updated_at = datetime.now(pkt).replace(microsecond=0)
     db.commit()
     db.refresh(db_attendance)
     return db_attendance
@@ -115,7 +131,15 @@ def create_attendance_self(attendance: AttendanceCreate, db: Session = Depends(g
     attendance_data = attendance.model_dump(exclude_unset=True)
     attendance_data["user_id"] = user_id
     attendance_data["date"] = date.today()
-    new_attendance = Attendance(**attendance_data, created_at=datetime.now(timezone.utc))
+    if attendance_data.get("clock_in") and attendance_data.get("clock_out"):
+        total_hours, overtime_hours = calculate_hours(
+            attendance_data["clock_in"], attendance_data["clock_out"],
+            attendance_data.get("break_start"), attendance_data.get("break_end")
+        )
+        attendance_data["total_hours"] = total_hours
+        attendance_data["overtime_hours"] = overtime_hours
+    pkt = pytz_timezone('Asia/Karachi')
+    new_attendance = Attendance(**attendance_data, created_at=datetime.now(pkt).replace(microsecond=0))
     db.add(new_attendance)
     db.commit()
     db.refresh(new_attendance)
@@ -130,13 +154,14 @@ def start_attendance_self(db: Session = Depends(get_db), current_user: dict = De
         Attendance.date == date.today()
     ).first():
         raise HTTPException(status_code=400, detail="Attendance already started today")
-    current_time = datetime.now(timezone.utc).time()
+    pkt = pytz_timezone('Asia/Karachi')
+    current_time = datetime.now(pkt).time().replace(microsecond=0)
     new_attendance = Attendance(
         user_id=user_id,
         date=date.today(),
         clock_in=current_time,
         attendance_type="present",
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(pkt).replace(microsecond=0)
     )
     db.add(new_attendance)
     db.commit()
@@ -155,14 +180,15 @@ def pause_attendance_self(db: Session = Depends(get_db), current_user: dict = De
         raise HTTPException(status_code=404, detail="No attendance record found for today")
     if attendance.clock_out:
         raise HTTPException(status_code=400, detail="Cannot pause after clocking out")
-    current_time = datetime.now(timezone.utc).time()
+    pkt = pytz_timezone('Asia/Karachi')
+    current_time = datetime.now(pkt).time().replace(microsecond=0)
     if not attendance.break_start:
         attendance.break_start = current_time
     elif not attendance.break_end:
         attendance.break_end = current_time
     else:
         raise HTTPException(status_code=400, detail="Break already completed")
-    attendance.updated_at = datetime.now(timezone.utc)
+    attendance.updated_at = datetime.now(pkt).replace(microsecond=0)
     db.commit()
     db.refresh(attendance)
     return attendance
@@ -179,7 +205,8 @@ def stop_attendance_self(db: Session = Depends(get_db), current_user: dict = Dep
         raise HTTPException(status_code=404, detail="No attendance record found for today")
     if attendance.clock_out:
         raise HTTPException(status_code=400, detail="Already clocked out")
-    current_time = datetime.now(timezone.utc).time()
+    pkt = pytz_timezone('Asia/Karachi')
+    current_time = datetime.now(pkt).time().replace(microsecond=0)
     if attendance.break_start and not attendance.break_end:
         attendance.break_end = current_time
     attendance.clock_out = current_time
@@ -191,7 +218,15 @@ def stop_attendance_self(db: Session = Depends(get_db), current_user: dict = Dep
     )
     attendance.total_hours = total_hours
     attendance.overtime_hours = overtime_hours
-    attendance.updated_at = datetime.now(timezone.utc)
+    attendance.updated_at = datetime.now(pkt).replace(microsecond=0)
     db.commit()
     db.refresh(attendance)
     return attendance
+
+@router.get("/self/history", response_model=List[AttendanceResponse])
+def get_attendance_history_self(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Get the current user's entire attendance history."""
+    attendance_records = db.query(Attendance).filter(
+        Attendance.user_id == current_user.get("user_id")
+    ).order_by(Attendance.date.desc()).all()
+    return attendance_records

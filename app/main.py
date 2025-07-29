@@ -27,22 +27,25 @@ admin.add_view(UserAdmin)
 admin.add_view(EmployeeAdmin)
 admin.add_view(DepartmentAdmin)
 
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],  # Or specify your frontend URL, e.g., "http://localhost"
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Or specify your frontend URL, e.g., "http://localhost"
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 instrumentator = Instrumentator()
 instrumentator.instrument(app).expose(app, endpoint="/metrics")
 setup_logging()
-app.add_middleware(AuthMiddleware)  # Enable middleware
-from app.api.v1 import auth, employees, attendance, leave
+# app.add_middleware(AuthMiddleware)  # Enable middleware
+from app.api.v1 import auth, employees, attendance, leave, payroll, departments, users
 app.include_router(auth.router, prefix="/auth")
 app.include_router(employees.router, prefix="/employees")
 app.include_router(attendance.router, prefix="/v1/attendance")
 app.include_router(leave.router, prefix="/v1/leave")
+app.include_router(payroll.router)
+app.include_router(departments.router, prefix="/departments")
+app.include_router(users.router)
 
 @app.get("/")
 def read_root():

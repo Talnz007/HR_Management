@@ -4,8 +4,8 @@ from datetime import date, time, datetime
 from typing import Optional, Literal
 
 class AttendanceBase(BaseModel):
-    user_id: Optional[UUID] = None  # Auto-populated
-    date: Optional[date] = None  # Auto-populated
+    user_id: Optional[UUID] = None
+    date: Optional[date] = None
     clock_in: Optional[time] = None
     clock_out: Optional[time] = None
     break_start: Optional[time] = None
@@ -14,6 +14,20 @@ class AttendanceBase(BaseModel):
     total_hours: Optional[float] = None
     overtime_hours: Optional[float] = None
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("clock_in", "clock_out", "break_start", "break_end", mode="before")
+    @classmethod
+    def parse_time(cls, v):
+        if isinstance(v, str):
+            # Handle ISO 8601 or HH:MM:SS
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(v.replace("Z", "+00:00"))
+                return dt.time().replace(microsecond=0)
+            except ValueError:
+                from datetime import time
+                return time.fromisoformat(v)
+        return v
 
 class AttendanceCreate(AttendanceBase):
     @field_validator("user_id")
@@ -37,5 +51,9 @@ class AttendanceResponse(AttendanceBase):
     @field_serializer("attendance_id", "user_id")
     def serialize_uuid(self, v: UUID) -> str:
         return str(v)
+
+    @field_serializer("clock_in", "clock_out", "break_start", "break_end")
+    def serialize_time(self, v: time) -> str:
+        return v.strftime("%H:%M:%S") if v else None
 
     model_config = ConfigDict(from_attributes=True, extra="allow")

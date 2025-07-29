@@ -1,9 +1,11 @@
 # app/api/v1/auth.py
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta, datetime, timezone
 import logging
+
 from app.database import get_db
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.models.user import User
@@ -25,6 +27,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
         )
+
     db_email = db.query(User).filter(User.email == user.email).first()
     if db_email:
         logger.warning(f"Registration attempt with existing email: {user.email}")
@@ -32,6 +35,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
+
     db_phone = db.query(User).filter(User.phone == user.phone).first()
     if db_phone:
         logger.warning(f"Registration attempt with existing phone: {user.phone}")
@@ -39,6 +43,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Phone already registered"
         )
+
     hashed_password = get_password_hash(user.password)
     db_user = User(
         username=user.username,
@@ -48,6 +53,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
         is_active=True,
         created_at=datetime.now(timezone.utc)
     )
+
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -58,6 +64,7 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
 def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Authenticate user and return access and refresh tokens."""
     user = db.query(User).filter(User.username == form_data.username).first()
+
     if not user or not verify_password(form_data.password, user.password_hash):
         logger.warning(f"Failed login attempt for username: {form_data.username}")
         raise HTTPException(
@@ -65,11 +72,14 @@ def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"}
         )
+
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(data={"sub": user.username, "user_id": str(user.user_id)}, expires_delta=access_token_expires)
     refresh_token = create_refresh_token(data={"sub": user.username, "user_id": str(user.user_id)})
+
     user.last_login = datetime.now(timezone.utc)
     db.commit()
+
     logger.info(f"User logged in: {user.username}")
     return {
         "access_token": access_token,
@@ -89,9 +99,11 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"}
         )
+
     username = payload.get("sub")
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = create_access_token(data={"sub": username, "user_id": payload.get("user_id")}, expires_delta=access_token_expires)
+
     logger.info(f"Access token refreshed for user: {username}")
     return {
         "access_token": access_token,

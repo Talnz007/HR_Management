@@ -177,11 +177,3 @@ def create_payroll(payroll: PayrollCreate, db: Session = Depends(get_db),
         db.rollback()
         logger.error(f"Failed to create payroll: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to create payroll")
-
-@router.get("/profile", response_model=EmployeeResponse)
-def get_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Get the current user's profile."""
-    employee = db.query(Employee).filter(Employee.user_id == current_user.user_id).first()
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee not found")
-    return employee
