@@ -6,8 +6,7 @@ from app.database import get_db
 from app.models.payroll import Payroll
 from app.models.employee import Employee
 from app.schemas.payroll import PayrollCreate, PayrollResponse
-from app.api.deps import get_current_user, require_role
-from app.api.deps import get_current_user, get_current_employee
+from app.api.deps import get_current_user, require_role, get_current_employee
 
 router = APIRouter(prefix="/v1/payroll", tags=["Payroll"])
 
@@ -35,7 +34,31 @@ async def create_payroll(payroll_data: PayrollCreate, db: Session = Depends(get_
     if not employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
 
-    db_payroll = Payroll(**payroll_data.model_dump())
+    # Fetch base_salary from employee or require it in payload if NULL
+    if employee.salary is not None:
+        base_salary = float(employee.salary)
+    else:
+        if payroll_data.base_salary is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Base salary must be provided when employee has no salary set")
+        base_salary = payroll_data.base_salary
+
+    # Calculate net_pay
+    overtime_pay = payroll_data.overtime_pay or 0.0
+    deductions = payroll_data.deductions or 0.0
+    net_pay = base_salary + overtime_pay - deductions
+
+    # Create payroll object
+    db_payroll = Payroll(
+        employee_id=payroll_data.employee_id,
+        period_start=payroll_data.period_start,
+        period_end=payroll_data.period_end,
+        base_salary=base_salary,
+        overtime_pay=overtime_pay,
+        deductions=deductions,
+        net_pay=net_pay
+    )
+
     db.add(db_payroll)
     db.commit()
     db.refresh(db_payroll)
@@ -54,7 +77,32 @@ async def update_payroll(payroll_id: UUID, payroll_data: PayrollCreate, db: Sess
     if not employee:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Employee not found")
 
-    for key, value in payroll_data.model_dump().items():
+    # Fetch base_salary from employee or require it in payload if NULL
+    if employee.salary is not None:
+        base_salary = float(employee.salary)
+    else:
+        if payroll_data.base_salary is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Base salary must be provided when employee has no salary set")
+        base_salary = payroll_data.base_salary
+
+    # Calculate net_pay
+    overtime_pay = payroll_data.overtime_pay or 0.0
+    deductions = payroll_data.deductions or 0.0
+    net_pay = base_salary + overtime_pay - deductions
+
+    # Update payroll fields
+    update_data = {
+        "employee_id": payroll_data.employee_id,
+        "period_start": payroll_data.period_start,
+        "period_end": payroll_data.period_end,
+        "base_salary": base_salary,
+        "overtime_pay": overtime_pay,
+        "deductions": deductions,
+        "net_pay": net_pay
+    }
+
+    for key, value in update_data.items():
         setattr(db_payroll, key, value)
 
     db.commit()
@@ -64,8 +112,8 @@ async def update_payroll(payroll_id: UUID, payroll_data: PayrollCreate, db: Sess
 
 @router.get("/me", response_model=List[PayrollResponse])
 def get_my_payrolls(
-    db: Session = Depends(get_db),
-    current_employee: Employee = Depends(get_current_employee)
+        db: Session = Depends(get_db),
+        current_employee: Employee = Depends(get_current_employee)
 ):
     """
     Retrieve all payroll records for the current logged-in employee.
@@ -74,6 +122,7 @@ def get_my_payrolls(
     if not payrolls:
         return []
     return payrolls
+
 
 @router.delete("/{payroll_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(require_role(["admin"]))])
 async def delete_payroll(payroll_id: UUID, db: Session = Depends(get_db),

@@ -7,10 +7,10 @@ class PayrollBase(BaseModel):
     employee_id: str
     period_start: date
     period_end: date
-    base_salary: float
+    base_salary: Optional[float] = None
     overtime_pay: Optional[float] = None
     deductions: Optional[float] = None
-    net_pay: float
+    net_pay: Optional[float] = None
     model_config = ConfigDict(extra="forbid")
 
 class PayrollCreate(PayrollBase):

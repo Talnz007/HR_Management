@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Optional, Literal
 
 class LeaveBase(BaseModel):
-    employee_id: str
+    employee_id: Optional[str] = None
     leave_type: Literal["sick", "vacation", "personal", "unpaid"]
     start_date: date
     end_date: date
@@ -15,10 +15,29 @@ class LeaveCreate(LeaveBase):
     @field_validator("employee_id")
     @classmethod
     def validate_uuid(cls, v):
-        try:
-            UUID(v)
-        except ValueError:
-            raise ValueError("Invalid UUID format")
+        if v is not None:
+            try:
+                UUID(v)
+            except ValueError:
+                raise ValueError("Invalid UUID format")
+        return v
+
+class LeaveUpdate(BaseModel):
+    employee_id: Optional[str] = None
+    leave_type: Optional[Literal["sick", "vacation", "personal", "unpaid"]] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    status: Optional[Literal["pending", "approved", "rejected"]] = None
+    model_config = ConfigDict(extra="forbid")
+
+    @field_validator("employee_id")
+    @classmethod
+    def validate_uuid(cls, v):
+        if v is not None:
+            try:
+                UUID(v)
+            except ValueError:
+                raise ValueError("Invalid UUID format")
         return v
 
 class LeaveResponse(LeaveBase):

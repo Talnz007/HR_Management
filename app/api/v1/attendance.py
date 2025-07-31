@@ -146,7 +146,7 @@ def create_attendance_self(attendance: AttendanceCreate, db: Session = Depends(g
     return new_attendance
 
 @router.post("/self/start", response_model=AttendanceResponse, status_code=status.HTTP_201_CREATED)
-def start_attendance_self(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+async def start_attendance_self(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Start the day for the current user, recording clock_in."""
     user_id = current_user.get("user_id")
     if db.query(Attendance).filter(
