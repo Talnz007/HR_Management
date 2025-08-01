@@ -20,12 +20,13 @@ from app.config import settings
 engine = create_engine(settings.database_url)
 admin = Admin(app, engine)
 from app.admin_views import (
-    UserAdmin, EmployeeAdmin, DepartmentAdmin
+    UserAdmin, EmployeeAdmin, DepartmentAdmin, PayrollAdmin
 )
 
 admin.add_view(UserAdmin)
 admin.add_view(EmployeeAdmin)
 admin.add_view(DepartmentAdmin)
+admin.add_view(PayrollAdmin)
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,7 +39,7 @@ instrumentator = Instrumentator()
 instrumentator.instrument(app).expose(app, endpoint="/metrics")
 setup_logging()
 # app.add_middleware(AuthMiddleware)  # Enable middleware
-from app.api.v1 import auth, employees, attendance, leave, payroll, departments, users
+from app.api.v1 import auth, employees, attendance, leave, payroll, departments, users, password_reset
 app.include_router(auth.router, prefix="/auth")
 app.include_router(employees.router, prefix="/employees")
 app.include_router(attendance.router, prefix="/v1/attendance")
@@ -46,6 +47,7 @@ app.include_router(leave.router, prefix="/v1/leave")
 app.include_router(payroll.router)
 app.include_router(departments.router, prefix="/departments")
 app.include_router(users.router)
+app.include_router(password_reset.router, prefix="/v1")
 
 @app.get("/")
 def read_root():

@@ -121,3 +121,4 @@ def logout_user(current_user: dict = Depends(get_current_user)):
     revoke_token(refresh_token, expires=604800)
     logger.info(f"User logged out: {current_user.get('sub')}")
     return {"detail": "Successfully logged out"}
+

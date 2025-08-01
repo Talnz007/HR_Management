@@ -87,3 +87,22 @@ def require_role(required_roles: List[str]):
             )
         return current_user
     return role_checker
+
+
+def get_current_admin_user(
+        current_user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db)
+) -> dict:
+    """Get current user and ensure they are an admin"""
+    user_id = current_user.get("user_id")
+
+    # Check if user is an admin
+    is_admin = db.query(Admin).filter(Admin.user_id == user_id).first() is not None
+
+    if not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    return current_user

@@ -1,3 +1,4 @@
+# app/database.py
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import settings
@@ -12,6 +13,7 @@ from app.models.attendance import Attendance
 from app.models.leave import Leave
 from app.models.payroll import Payroll
 from app.models.registration import Registration
+from app.models.password_reset import PasswordResetRequest  # New import
 
 engine = create_engine(settings.database_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -19,7 +21,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 def get_db():
     db = SessionLocal()
     try:
-        db.execute(text("SET timezone = 'Asia/Karachi'"))  # Use text() for SQL expression
+        db.execute(text("SET timezone = 'Asia/Karachi'"))
         yield db
     finally:
         db.close()
