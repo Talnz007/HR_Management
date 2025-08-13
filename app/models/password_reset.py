@@ -21,3 +21,4 @@ class PasswordResetRequest(Base):
     # Relationships
     user = relationship("User", foreign_keys=[user_id])
     admin = relationship("User", foreign_keys=[admin_id])
+    chat_sessions = relationship("ChatSession", back_populates="password_reset_request")

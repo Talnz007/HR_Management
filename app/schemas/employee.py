@@ -49,6 +49,7 @@ class EmployeeResponse(EmployeeBase):
     salary: Optional[float]
     created_at: datetime
     updated_at: Optional[datetime]
+    profile_picture_key: Optional[str] = None
 
     @field_serializer("employee_id", "user_id", "department_id", "manager_id")
     def serialize_uuid(self, v: Optional[UUID]) -> Optional[str]:

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.api.deps import require_role, get_current_user
 from app.database import get_db
+from sqlalchemy.orm import joinedload
 from app.models.user import User
 from app.models.employee import Employee
 from app.models.leave import Leave
@@ -71,9 +72,28 @@ def create_employee(employee: EmployeeCreate, db: Session = Depends(get_db),
         raise HTTPException(status_code=500, detail="Failed to create employee")
 
 @router.get("/", response_model=List[EmployeeResponse])
-def list_employees(db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin"]))):
-    """List all employees (admin only)."""
-    return db.query(Employee).all()
+def list_employees(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """
+    List all employees (admin only), including their profile pictures.
+    """
+    employees = (
+        db.query(Employee)
+        .options(joinedload(Employee.user))  # eager load related User
+        .all()
+    )
+
+    # Attach the profile_picture_key from the linked User
+    employee_list = []
+    for emp in employees:
+        emp_data = EmployeeResponse.model_validate(emp)
+        if emp.user:
+            emp_data.profile_picture_key = emp.user.profile_picture_key
+        employee_list.append(emp_data)
+
+    return employee_list
 
 @router.get("/{employee_id}", response_model=EmployeeResponse)
 def get_employee(employee_id: str, db: Session = Depends(get_db),

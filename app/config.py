@@ -1,5 +1,7 @@
+# app/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from decouple import config
+import os # <-- Import os
 
 class Settings(BaseSettings):
     database_url: str = config("DATABASE_URL", default="postgresql://postgres.vzudfmkfnzwgwmkgzvgp:RcN~_RRr9rmZ5RZ@aws-0-ap-south-1.pooler.supabase.com:6543/postgres")
@@ -12,6 +14,11 @@ class Settings(BaseSettings):
     redis_username: str = config("REDIS_USERNAME", default="")
     redis_password: str = config("REDIS_PASSWORD", default="")
     decode_response: bool = False
+
+    # --- ADD THESE TWO LINES ---
+    MEDIA_ROOT: str = "media"
+    PROFILE_PICTURES_DIR: str = os.path.join(MEDIA_ROOT, "profile_pictures")
+    # --- END OF ADDITION ---
 
     model_config = SettingsConfigDict(env_file=".env",
                                       extra="allow",

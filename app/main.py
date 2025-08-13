@@ -8,6 +8,9 @@ from sqlalchemy import create_engine
 from app.database import get_db
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
+from fastapi.staticfiles import StaticFiles
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +31,9 @@ admin.add_view(EmployeeAdmin)
 admin.add_view(DepartmentAdmin)
 admin.add_view(PayrollAdmin)
 
+app.mount("/media", StaticFiles(directory=settings.MEDIA_ROOT), name="media")
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Or specify your frontend URL, e.g., "http://localhost"
@@ -39,7 +45,7 @@ instrumentator = Instrumentator()
 instrumentator.instrument(app).expose(app, endpoint="/metrics")
 setup_logging()
 # app.add_middleware(AuthMiddleware)  # Enable middleware
-from app.api.v1 import auth, employees, attendance, leave, payroll, departments, users, password_reset
+from app.api.v1 import auth, employees, attendance, leave, payroll, departments, users, password_reset, chat
 app.include_router(auth.router, prefix="/auth")
 app.include_router(employees.router, prefix="/employees")
 app.include_router(attendance.router, prefix="/v1/attendance")
@@ -48,7 +54,17 @@ app.include_router(payroll.router)
 app.include_router(departments.router, prefix="/departments")
 app.include_router(users.router)
 app.include_router(password_reset.router, prefix="/v1")
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the HR System API"}
+
+
+from app.socket import sio           # import the shared server
+import socketio
+
+socket_app = socketio.ASGIApp(       # wrap FastAPI with Socket.IO
+    sio,
+    other_asgi_app=app               # ← THIS keeps all your REST routes working
+)

@@ -1,9 +1,10 @@
 # app/models/user.py
 from sqlalchemy import Column, String, Boolean, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 import uuid
 from app.database import Base
+from sqlalchemy.orm import relationship, Mapped, mapped_column
+from typing import Optional
 
 class User(Base):
     __tablename__ = "users"
@@ -18,6 +19,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
     must_change_password = Column(Boolean, default=False)  # New field
+    profile_picture_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     employee = relationship("Employee", back_populates="user", uselist=False)
     admin = relationship("Admin", back_populates="user", uselist=False)
@@ -25,3 +27,7 @@ class User(Base):
     attendances = relationship("Attendance", back_populates="user")
     # New relationship for password reset requests
     password_reset_requests = relationship("PasswordResetRequest", foreign_keys="PasswordResetRequest.user_id")
+    employee_chat_sessions = relationship("ChatSession", foreign_keys="ChatSession.employee_id",
+                                          back_populates="employee")
+    admin_chat_sessions = relationship("ChatSession", foreign_keys="ChatSession.admin_id", back_populates="admin")
+    chat_messages = relationship("ChatMessage", back_populates="sender")
