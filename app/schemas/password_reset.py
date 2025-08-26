@@ -1,9 +1,12 @@
 # app/schemas/password_reset.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import datetime
 import uuid
 
+
+class PasswordResetEmailRequest(BaseModel):
+    email: EmailStr
 
 class PasswordResetRequestCreate(BaseModel):
     username_or_email: str = Field(..., min_length=3, max_length=100)

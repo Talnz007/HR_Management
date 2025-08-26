@@ -1,16 +1,17 @@
 # app/api/v1/password_reset.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Dict
 from app.database import get_db
-from app.services.password_reset_service import PasswordResetService
+from app.services.password_reset_service import PasswordResetService, SelfServicePasswordReset
 from app.schemas.password_reset import (
     PasswordResetRequestCreate,
     PasswordResetRequestResponse,
     PasswordResetAction,
     PasswordResetResponse,
     ChangePasswordRequest,
-    MustChangePasswordResponse
+    MustChangePasswordResponse,
+    PasswordResetEmailRequest # <-- NEW SCHEMA
 )
 from app.api.deps import get_current_user, require_role
 from app.models.user import User
@@ -18,6 +19,21 @@ from app.socket import sio
 
 router = APIRouter(prefix="/password-reset", tags=["password-reset"])
 
+
+@router.post("/request-reset", status_code=status.HTTP_200_OK, response_model=Dict[str, str])
+async def request_password_reset_email(
+        request: PasswordResetEmailRequest,
+        background_tasks: BackgroundTasks
+):
+    """
+    Public endpoint for users to request a password reset email.
+    It will always return a generic success message to prevent email enumeration (FR-1.4).
+    The actual work is done in the background.
+    """
+    service = SelfServicePasswordReset()
+    background_tasks.add_task(service.request_password_reset, email=request.email)
+
+    return {"message": "If an account with that email exists, a password reset link has been sent."}
 
 @router.post("/request", response_model=dict)
 async def create_password_reset_request(

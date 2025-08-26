@@ -9,6 +9,7 @@ from app.database import get_db
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.staticfiles import StaticFiles
+from app.api.v1 import password_reset
 
 
 
@@ -53,7 +54,8 @@ app.include_router(leave.router, prefix="/v1/leave")
 app.include_router(payroll.router)
 app.include_router(departments.router, prefix="/departments")
 app.include_router(users.router)
-app.include_router(password_reset.router, prefix="/v1")
+
+app.include_router(password_reset.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["chat"])
 
 @app.get("/")

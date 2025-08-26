@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # FastAPI Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hrms_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      # Use the Docker network name for the database service
+      DATABASE_URL: "postgresql://postgres:Niazai007@host.docker.internal:5432/hr_system_test"
+    networks:
+      - hrms-network
+    user: "1000:1000" # Set the user to match your host UID/GID
+
+  # Next.js Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: hrms_frontend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./frontend:/app
+    networks:
+      - hrms-network
+    user: "1000:1000" # Set the user to match your host UID/GID
+
+  # Prometheus Monitoring Service
+  prometheus:
+    image: prom/prometheus:v2.46.0
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    networks:
+      - hrms-network
+    depends_on:
+      - backend
+
+  # Grafana Visualization Service
+  grafana:
+    image: grafana/grafana:10.1.5
+    container_name: grafana
+    ports:
+      - "4000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - hrms-network
+    depends_on:
+      - prometheus
+
+networks:
+  hrms-network:
+    driver: bridge
+
+volumes:
+  grafana-storage:
