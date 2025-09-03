@@ -1,153 +1,119 @@
-"use client"
-import { useState, useEffect } from "react"
-import { Grid, Card, CardContent, Typography, Box, Paper } from "@mui/material"
-import { People, EventNote, Schedule, Payment } from "@mui/icons-material"
-import { apiService } from "../../services/apiService"
-import { ProtectedRoute } from "../../components/ProtectedRoute"
-import Layout from "../../components/Layout"
+"use client";
 
-interface DashboardStats {
-  totalEmployees: number
-  pendingLeaves: number
-  todayAttendance: number
-  monthlyPayroll: number
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+// **FIX:** Change the Grid import to be more direct
+import { Box, Typography, TextField, Button, CircularProgress, Alert, Paper } from '@mui/material';
+import Grid from '@mui/material/Grid'; // <-- Use this direct import for Grid
+import { apiService } from '../../services/apiService';
+import Layout from '../../components/Layout';
+import { ProtectedRoute } from '../../components/ProtectedRoute';
+import toast from 'react-hot-toast';
+
+// A more specific type for the employee state
+interface EmployeeData {
+  first_name: string;
+  last_name: string;
+  job_title: string;
+  phone: string;
+  status: 'active' | 'inactive' | 'terminated';
+  [key: string]: any; // Allow other properties
 }
 
-function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalEmployees: 0,
-    pendingLeaves: 0,
-    todayAttendance: 0,
-    monthlyPayroll: 0,
-  })
-  const [loading, setLoading] = useState(true)
+export default function EditEmployeePage() {
+  const router = useRouter();
+  const params = useParams();
+  const employeeId = params.id as string;
+
+  const [employee, setEmployee] = useState<EmployeeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        // Fetch data from various endpoints to calculate stats
-        const [employees, leaves, attendances] = await Promise.all([
-          apiService.getEmployees(),
-          apiService.getLeaves(),
-          apiService.getAttendances(),
-        ])
-
-        const today = new Date().toISOString().split("T")[0]
-        const pendingLeaves = leaves.filter((leave: any) => leave.status === "pending").length
-        const todayAttendance = attendances.filter((att: any) => att.date === today).length
-
-        setStats({
-          totalEmployees: employees.length,
-          pendingLeaves,
-          todayAttendance,
-          monthlyPayroll: employees.length * 5000, // Mock calculation
+    if (employeeId) {
+      apiService.getEmployee(employeeId)
+        .then(data => {
+          setEmployee(data);
+          setLoading(false);
         })
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error)
-      } finally {
-        setLoading(false)
-      }
+        .catch(err => {
+          console.error("Failed to fetch employee", err);
+          setError("Failed to load employee data.");
+          setLoading(false);
+        });
     }
+  }, [employeeId]);
 
-    fetchDashboardData()
-  }, [])
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setEmployee((prev: EmployeeData | null) => (prev ? { ...prev, [name]: value } : null));
+  };
 
-  const statCards = [
-    {
-      title: "Total Employees",
-      value: stats.totalEmployees,
-      icon: <People fontSize="large" />,
-      color: "#1976d2",
-    },
-    {
-      title: "Pending Leaves",
-      value: stats.pendingLeaves,
-      icon: <EventNote fontSize="large" />,
-      color: "#ed6c02",
-    },
-    {
-      title: "Today's Attendance",
-      value: stats.todayAttendance,
-      icon: <Schedule fontSize="large" />,
-      color: "#2e7d32",
-    },
-    {
-      title: "Monthly Payroll",
-      value: `$${stats.monthlyPayroll.toLocaleString()}`,
-      icon: <Payment fontSize="large" />,
-      color: "#9c27b0",
-    },
-  ]
+  const handleSave = async () => {
+    if (!employee) return;
+    setSaving(true);
+    try {
+      const { employee_id, user_id, created_at, updated_at, role, profile_picture_key, ...updateData } = employee;
+      delete updateData.password;
 
-  return (
-    <Box>
-      <Typography variant="h4" gutterBottom>
-        Admin Dashboard
-      </Typography>
-      <Grid container spacing={3}>
-        {statCards.map((card, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom>
-                      {card.title}
-                    </Typography>
-                    <Typography variant="h4">{card.value}</Typography>
-                  </Box>
-                  <Box sx={{ color: card.color }}>{card.icon}</Box>
-                </Box>
-              </CardContent>
-            </Card>
+      await apiService.updateEmployee(employeeId, updateData);
+      toast.success("Employee updated successfully!");
+      router.push('/admin/employees');
+    } catch (err) {
+      console.error("Failed to update employee", err);
+      toast.error("Failed to update employee.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderContent = () => {
+    if (loading) return <Box display="flex" justifyContent="center" sx={{ mt: 4 }}><CircularProgress /></Box>;
+    if (error) return <Alert severity="error">{error}</Alert>;
+    if (!employee) return <Alert severity="warning">Employee not found.</Alert>;
+
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" gutterBottom>Edit Employee</Typography>
+        <Paper sx={{ p: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField name="first_name" label="First Name" value={employee.first_name} onChange={handleChange} fullWidth />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField name="last_name" label="Last Name" value={employee.last_name} onChange={handleChange} fullWidth />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField name="job_title" label="Job Title" value={employee.job_title} onChange={handleChange} fullWidth />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField name="phone" label="Phone" value={employee.phone} onChange={handleChange} fullWidth />
+            </Grid>
+            <Grid item xs={12}>
+               <TextField name="status" label="Status" value={employee.status} onChange={handleChange} fullWidth select SelectProps={{ native: true }}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="terminated">Terminated</option>
+               </TextField>
+            </Grid>
           </Grid>
-        ))}
-      </Grid>
+          <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+            <Button onClick={() => router.back()} sx={{ mr: 1 }}>Cancel</Button>
+            <Button variant="contained" onClick={handleSave} disabled={saving}>
+              {saving ? <CircularProgress size={24} /> : 'Save Changes'}
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
+    );
+  }
 
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Recent Activities
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              • New employee John Doe added
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              • Leave request approved for Jane Smith
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              • Payroll processed for December
-            </Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 2 }}>
-            <Typography variant="h6" gutterBottom>
-              Quick Actions
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              • Add new employee
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              • Process payroll
-            </Typography>
-            <Typography variant="body2" color="textSecondary">
-              • Review leave requests
-            </Typography>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Box>
-  )
-}
-
-export default function AdminDashboardPage() {
   return (
-    <ProtectedRoute requireAdmin>
+    <ProtectedRoute>
       <Layout>
-        <AdminDashboard />
+        {renderContent()}
       </Layout>
     </ProtectedRoute>
-  )
+  );
 }

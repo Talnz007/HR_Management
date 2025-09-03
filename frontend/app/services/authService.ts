@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const API_BASE_URL = "http://localhost:8000" // Standardized base URL
+const API_BASE_URL = "http://localhost:8000"; // Standardized base URL
 
 interface LoginResponse {
   access_token: string
@@ -9,31 +9,35 @@ interface LoginResponse {
   expires_in: number
 }
 
-interface User {
-  user_id: string
-  username: string
-  email: string
-  phone: string
-  is_active: boolean
-  is_admin?: boolean
-}
-
 export const authService = {
   async login(username: string, password: string): Promise<LoginResponse> {
-    const formData = new FormData()
-    formData.append("username", username)
-    formData.append("password", password)
-    formData.append("grant_type", "password")
-    formData.append("scope", "")
+    // Based on your OpenAPI spec, the endpoint expects form data
+    const formData = new FormData();
+    formData.append("username", username);
+    formData.append("password", password);
+    formData.append("grant_type", "password");
+    formData.append("scope", "");
 
-    const response = await axios.post(`${API_BASE_URL}/auth/login`, formData, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    })
-    return response.data
+    // Convert FormData to URLSearchParams for proper x-www-form-urlencoded format
+    const params = new URLSearchParams();
+    params.append("username", username);
+    params.append("password", password);
+    params.append("grant_type", "password");
+    params.append("scope", "");
+
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, params, {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      });
+      console.log("Login successful:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
+    }
   },
-
 
   async refreshToken(): Promise<LoginResponse> {
     const refreshToken = localStorage.getItem("refresh_token")
@@ -41,50 +45,45 @@ export const authService = {
       throw new Error("No refresh token available")
     }
 
-    const response = await axios.post(`${API_BASE_URL}/auth/refresh?refresh_token=${refreshToken}`)
-    return response.data
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/refresh?refresh_token=${refreshToken}`)
+      return response.data
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      throw error;
+    }
   },
 
   async logout(): Promise<void> {
     const token = localStorage.getItem("access_token")
     if (token) {
-      await axios.post(
-        `${API_BASE_URL}/auth/logout`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-    }
-  },
-
-  async getCurrentUser(): Promise<User> {
-    // Since there's no direct endpoint for current user, we'll simulate it
-    // In a real app, you might decode the JWT or have a /me endpoint
-    const token = localStorage.getItem("access_token")
-    if (!token) {
-      throw new Error("No token available")
-    }
-
-    // For demo purposes, we'll return a mock user
-    // In production, you'd decode the JWT or call a /me endpoint
-    return {
-      user_id: "123e4567-e89b-12d3-a456-426614174000",
-      username: "admin",
-      email: "admin@company.com",
-      phone: "+1234567890",
-      is_active: true,
-      is_admin: true, // This would come from JWT or API
+      try {
+        await axios.post(
+          `${API_BASE_URL}/auth/logout`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
+      } catch (error) {
+        console.error("Logout error:", error);
+        throw error;
+      }
     }
   },
 
   async requestPasswordReset(email: string): Promise<{ message: string }> {
-    const response = await axios.post(`${API_BASE_URL}/api/v1/password-reset/request-reset`, {
-      email,
-    });
-    return response.data;
+    try {
+      const response = await axios.post(`${API_BASE_URL}/api/v1/password-reset/request-reset`, {
+        email,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      throw error;
+    }
   },
 
   async register(userData: {
@@ -92,8 +91,13 @@ export const authService = {
     email: string
     phone: string
     password: string
-  }): Promise<User> {
-    const response = await axios.post(`${API_BASE_URL}/auth/register`, userData)
-    return response.data
+  }) {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, userData)
+      return response.data
+    } catch (error) {
+      console.error("Registration error:", error);
+      throw error;
+    }
   },
 }

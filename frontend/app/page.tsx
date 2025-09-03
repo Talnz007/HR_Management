@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "./contexts/AuthContext"
+import { useAuth } from "../src/contexts/AuthContext"
 import { CircularProgress, Box } from "@mui/material"
 
 export default function HomePage() {

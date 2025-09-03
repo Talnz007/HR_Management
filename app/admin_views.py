@@ -13,11 +13,11 @@ class UserAdmin(ModelView, model=User):
     icon = "fa-solid fa-user"
     page_size = 25
     page_size_options = [10, 25, 50, 100, 200]
-    column_list = [User.user_id, User.email, User.username, User.created_at, User.is_active, User.last_login]
+    column_list = [User.user_id, User.email, User.username, User.created_at, User.is_active, User.last_login, User.role]
     column_searchable_list = [User.email, User.username, User.phone]
     column_sortable_list = [User.user_id, User.email, User.username, User.created_at, User.is_active, User.last_login]
-    form_columns = [User.email, User.username, User.phone, User.is_active]
-    edit_columns = [User.email, User.username, User.phone, User.is_active, User.password_hash]
+    form_columns = [User.email, User.username, User.phone, User.is_active, User.role]
+    edit_columns = [User.email, User.username, User.phone, User.is_active, User.password_hash, User.role]
     export_types = ['csv', 'json']
 
 class EmployeeAdmin(ModelView, model=Employee):

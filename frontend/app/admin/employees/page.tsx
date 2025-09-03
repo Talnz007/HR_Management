@@ -1,413 +1,186 @@
 "use client"
-import { useState, useEffect } from "react"
+
+import { useState, useEffect } from "react";
 import {
   Box,
   Typography,
-  Button,
+  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  MenuItem,
-  Grid,
+  Button,
   Chip,
-} from "@mui/material"
-import { Add, Edit, Delete } from "@mui/icons-material"
-import { apiService } from "../../services/apiService"
-import toast from "react-hot-toast"
-import { ProtectedRoute } from "../../components/ProtectedRoute"
-import Layout from "../../components/Layout"
-import { ProfileAvatar } from "@/app/components/ProfileAvatar"
-
-// Define the Department interface based on the API response
-interface Department {
-  department_id: string;
-  name: string;
-  created_at: string;
-  updated_at: string | null;
-}
+  CircularProgress,
+  Alert,
+  TextField,
+  InputAdornment
+} from "@mui/material";
+import {
+  Add as AddIcon,
+  Search as SearchIcon,
+  Person as PersonIcon,
+  SupervisorAccount as ManagerIcon,
+  AdminPanelSettings as AdminIcon
+} from "@mui/icons-material";
+import { apiService } from "../../services/apiService";
+import { useRouter } from "next/navigation";
+import Layout from "../../components/Layout"; // Import Layout
+import { ProtectedRoute } from "../../components/ProtectedRoute"; // Import ProtectedRoute
 
 interface Employee {
-  employee_id: string
-  employee_number: string
-  first_name: string
-  middle_name?: string
-  last_name: string
-  email?: string
-  phone: string
-  job_title: string
-  department_id: string
-  employment_type: string
-  status: string
-  salary?: number
-  hire_date: string
-  profile_picture_key?: string | null
+  employee_id: string;
+  user_id: string;
+  employee_number: string;
+  first_name: string;
+  last_name: string;
+  job_title: string;
+  department_id: string;
+  department_name?: string;
+  status: string;
+  role: 'admin' | 'manager' | 'employee'; // Use the role from the API
 }
 
-function EmployeeManagement() {
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [departments, setDepartments] = useState<Department[]>([]) // Add state for departments
-  const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
-  const [formData, setFormData] = useState({
-    employee_number: "",
-    first_name: "",
-    middle_name: "",
-    last_name: "",
-    phone: "",
-    job_title: "",
-    department_id: "",
-    employment_type: "full_time",
-    status: "active",
-    salary: "",
-    hire_date: "",
-    date_of_birth: "",
-    password: "",
-  })
+function EmployeesPageContent() {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const router = useRouter();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [employeesData, departmentsData] = await Promise.all([
+        setLoading(true);
+        const [empData, deptData] = await Promise.all([
           apiService.getEmployees(),
-          apiService.getDepartments(), // Fetch departments
+          apiService.getDepartments()
         ]);
-        setEmployees(employeesData);
-        setDepartments(departmentsData);
-      } catch (error) {
-        toast.error("Failed to fetch data");
+
+        const departmentMap = new Map(deptData.map((dept: any) => [dept.department_id, dept.name]));
+
+        // The role now comes directly from the backend, no more client-side calculation
+        const enhancedEmployees = empData.map((emp: any) => ({
+          ...emp,
+          department_name: departmentMap.get(emp.department_id) || "Unknown",
+        }));
+
+        setEmployees(enhancedEmployees);
+        setFilteredEmployees(enhancedEmployees);
+      } catch (err) {
+        console.error("Error fetching employees:", err);
+        setError("Failed to load employee data");
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
-  const fetchEmployees = async () => {
-    try {
-      const data = await apiService.getEmployees()
-      setEmployees(data)
-    } catch (error) {
-      toast.error("Failed to fetch employees")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleOpenDialog = (employee?: Employee) => {
-    if (employee) {
-      setEditingEmployee(employee)
-      setFormData({
-        employee_number: employee.employee_number,
-        first_name: employee.first_name,
-        middle_name: employee.middle_name || "",
-        last_name: employee.last_name,
-        phone: employee.phone,
-        job_title: employee.job_title,
-        department_id: employee.department_id,
-        employment_type: employee.employment_type,
-        status: employee.status,
-        salary: employee.salary?.toString() || "",
-        hire_date: employee.hire_date,
-        date_of_birth: "",
-        password: "",
-      })
+  useEffect(() => {
+    if (searchTerm) {
+      const filtered = employees.filter(emp =>
+        `${emp.first_name} ${emp.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.employee_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.job_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (emp.department_name && emp.department_name.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredEmployees(filtered);
     } else {
-      setEditingEmployee(null)
-      setFormData({
-        employee_number: "",
-        first_name: "",
-        middle_name: "",
-        last_name: "",
-        phone: "",
-        job_title: "",
-        department_id: "",
-        employment_type: "full_time",
-        status: "active",
-        salary: "",
-        hire_date: "",
-        date_of_birth: "",
-        password: "",
-      })
+      setFilteredEmployees(employees);
     }
-    setDialogOpen(true)
-  }
-
-  const handleCloseDialog = () => {
-    setDialogOpen(false)
-    setEditingEmployee(null)
-  }
-
-  const handleSubmit = async () => {
-    try {
-      const submitData = {
-        ...formData,
-        salary: formData.salary ? Number.parseFloat(formData.salary) : null,
-      }
-
-      if (editingEmployee) {
-        await apiService.updateEmployee(editingEmployee.employee_id, submitData)
-        toast.success("Employee updated successfully")
-      } else {
-        await apiService.createEmployee(submitData)
-        toast.success("Employee created successfully")
-      }
-
-      handleCloseDialog()
-      fetchEmployees()
-    } catch (error) {
-      toast.error("Failed to save employee")
-    }
-  }
-
-  const handleDelete = async (employeeId: string) => {
-    if (window.confirm("Are you sure you want to delete this employee?")) {
-      try {
-        await apiService.deleteEmployee(employeeId)
-        toast.success("Employee deleted successfully")
-        fetchEmployees()
-      } catch (error) {
-        toast.error("Failed to delete employee")
-      }
-    }
-  }
+  }, [searchTerm, employees]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "success"
-      case "inactive":
-        return "warning"
-      case "terminated":
-        return "error"
-      default:
-        return "default"
+    switch (status.toLowerCase()) {
+      case "active": return "success";
+      case "inactive": return "warning";
+      case "terminated": return "error";
+      default: return "default";
     }
+  };
+  
+  const getRoleChip = (role: string) => {
+      switch(role) {
+          case 'admin':
+              return <Chip icon={<AdminIcon />} label="Admin" color="secondary" size="small" variant="outlined" />;
+          case 'manager':
+              return <Chip icon={<ManagerIcon />} label="Manager" color="primary" size="small" variant="outlined" />;
+          default:
+              return <Chip icon={<PersonIcon />} label="Employee" color="default" size="small" variant="outlined" />;
+      }
   }
 
+  if (loading) return <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px"><CircularProgress /></Box>;
+
   return (
-    <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Employee Management</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={() => handleOpenDialog()}>
+    <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">Employees</Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => router.push("/admin/employees/add")}>
           Add Employee
         </Button>
       </Box>
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Avatar</TableCell>
-              <TableCell>Employee #</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Job Title</TableCell>
-              <TableCell>Employment Type</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Hire Date</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {employees.map((employee) => (
-              <TableRow key={employee.employee_id}>
-                <TableCell>
-                  <ProfileAvatar
-                    user={{
-                      first_name: employee.first_name,
-                      last_name: employee.last_name,
-                      profile_picture_key: employee.profile_picture_key
-                    }}
-                    className="w-10 h-10"
-                  />
-                </TableCell>
-                <TableCell>{employee.employee_number}</TableCell>
-                <TableCell>
-                  {`${employee.first_name} ${employee.middle_name || ""} ${employee.last_name}`.trim()}
-                </TableCell>
-                <TableCell>{employee.job_title}</TableCell>
-                <TableCell>{employee.employment_type.replace("_", " ")}</TableCell>
-                <TableCell>
-                  <Chip label={employee.status} color={getStatusColor(employee.status) as any} size="small" />
-                </TableCell>
-                <TableCell>{new Date(employee.hire_date).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleOpenDialog(employee)}>
-                    <Edit />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(employee.employee_id)}>
-                    <Delete />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{editingEmployee ? "Edit Employee" : "Add Employee"}</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Employee Number"
-                value={formData.employee_number}
-                onChange={(e) => setFormData({ ...formData, employee_number: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="First Name"
-                value={formData.first_name}
-                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Middle Name"
-                value={formData.middle_name}
-                onChange={(e) => setFormData({ ...formData, middle_name: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Last Name"
-                value={formData.last_name}
-                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Job Title"
-                value={formData.job_title}
-                onChange={(e) => setFormData({ ...formData, job_title: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                select
-                label="Department"
-                value={formData.department_id}
-                onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}
-              >
-                {departments.map((dept) => (
-                  <MenuItem key={dept.department_id} value={dept.department_id}>
-                    {dept.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                select
-                label="Employment Type"
-                value={formData.employment_type}
-                onChange={(e) => setFormData({ ...formData, employment_type: e.target.value })}
-              >
-                <MenuItem value="full_time">Full Time</MenuItem>
-                <MenuItem value="part_time">Part Time</MenuItem>
-                <MenuItem value="contract">Contract</MenuItem>
-                <MenuItem value="intern">Intern</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                select
-                label="Status"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              >
-                <MenuItem value="active">Active</MenuItem>
-                <MenuItem value="inactive">Inactive</MenuItem>
-                <MenuItem value="terminated">Terminated</MenuItem>
-              </TextField>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Salary"
-                type="number"
-                value={formData.salary}
-                onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Hire Date"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.hire_date}
-                onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Date of Birth"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={formData.date_of_birth}
-                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-              />
-            </Grid>
-            {!editingEmployee && (
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                />
-              </Grid>
-            )}
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingEmployee ? "Update" : "Create"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <TextField fullWidth variant="outlined" placeholder="Search employees..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} sx={{ mb: 3 }}
+        InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon /></InputAdornment>) }}
+      />
+
+      <Paper sx={{ p: 2 }}>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Employee ID</TableCell>
+                <TableCell>Name</TableCell>
+                <TableCell>Job Title</TableCell>
+                <TableCell>Department</TableCell>
+                <TableCell>Role</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredEmployees.length > 0 ? (
+                filteredEmployees.map((employee) => (
+                  <TableRow key={employee.employee_id}>
+                    <TableCell>{employee.employee_number}</TableCell>
+                    <TableCell>{`${employee.first_name} ${employee.last_name}`}</TableCell>
+                    <TableCell>{employee.job_title}</TableCell>
+                    <TableCell>{employee.department_name}</TableCell>
+                    <TableCell>{getRoleChip(employee.role)}</TableCell>
+                    <TableCell><Chip label={employee.status} color={getStatusColor(employee.status)} size="small" /></TableCell>
+                    <TableCell>
+                      <Button variant="outlined" size="small" onClick={() => router.push(`/admin/employees/edit/${employee.employee_id}`)}>
+                        Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow><TableCell colSpan={7} align="center">No employees found</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
     </Box>
-  )
+  );
 }
 
-export default function EmployeeManagementPage() {
-  return (
-    <ProtectedRoute>
-      <Layout>
-        <EmployeeManagement />
-      </Layout>
-    </ProtectedRoute>
-  )
+// Wrap the page content in the Layout and ProtectedRoute
+export default function EmployeesPage() {
+    return (
+        <ProtectedRoute>
+            <Layout>
+                <EmployeesPageContent />
+            </Layout>
+        </ProtectedRoute>
+    )
 }

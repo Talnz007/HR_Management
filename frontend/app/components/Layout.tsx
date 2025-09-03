@@ -21,7 +21,7 @@ import {
 } from "@mui/material"
 import { Menu as MenuIcon, Dashboard, People, EventNote, Schedule, Payment, AccountCircle } from "@mui/icons-material"
 import { useRouter, usePathname } from "next/navigation"
-import { useAuth } from "../contexts/AuthContext"
+import { useAuth } from "../../src/contexts/AuthContext"
 
 const drawerWidth = 240
 

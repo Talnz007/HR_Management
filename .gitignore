@@ -18,3 +18,13 @@ hr_system.log
 test_output.txt
 .idea/
 tests/
+# Credentials and secrets
+*.json
+*.pickle
+app/config.py
+gmail_auth.py
+prometheus/prometheus.yml
+docker-compose.yml.save
+
+# OS files and logs
+*.log

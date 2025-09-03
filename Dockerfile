@@ -1,20 +1,24 @@
-# Use an official Python runtime as a parent image
+# Dockerfile
 FROM python:3.11-slim
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Copy the requirements file into the working directory
+# Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install any dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Upgrade pip, extend timeout, and install dependencies
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir --default-timeout=100 -r requirements.txt
 
-# Copy the rest of your application code into the container
+# Copy the rest of your code
 COPY . .
 
-# Expose the port that uvicorn will run on
+# Ensure we're running as root inside container
+USER root
+
+# Expose backend port
 EXPOSE 8000
 
-# Command to run the application with hot-reloading for development
-CMD ["uvicorn", "app.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+# Run Uvicorn
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

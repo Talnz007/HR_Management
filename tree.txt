@@ -1,19 +1,11 @@
 .
+├── 3.0.0
 ├── alembic
 │   ├── env.py
 │   ├── README
 │   ├── script.py.mako
 │   └── versions
-│       ├── 092facef5731_remove_updated_at_default_from_employees.py
-│       ├── 1c24626816b6_make_password_reset_request_id_nullable_.py
-│       ├── 4921675c0e45_align_schema_with_models.py
-│       ├── 92618afa0d75_add_password_reset_functionality.py
-│       ├── af7cb86e9d7e_manually_add_profile_picture_key_to_.py
-│       ├── b462e82ce9a1_make_chat_messages_sender_id_nullable.py
-│       ├── b4a6653a1494_make_password_reset_request_id_nullable.py
-│       ├── bf3385efb774_add_password_reset_requests_and_must_.py
-│       ├── dd77f4cf5c25_add_updated_at_to_all_tables.py
-│       └── eca828808e12_add_chat_system_for_password_reset.py
+│       └── 7ddb14a0fbd1_initial_schema_setup_for_supabase.py
 ├── alembic.ini
 ├── app
 │   ├── admin_views.py
@@ -75,12 +67,140 @@
 │   └── utils
 │       ├── helpers.py
 │       └── __init__.py
+├── apply_hrms_changes.zsh
+├── backup_20250813_113155
+│   ├── apiService.ts
+│   ├── AuthContext.tsx
+│   ├── employees_page.tsx
+│   ├── employees.py
+│   └── ProtectedRoute.tsx
+├── client_secret_795799182758-75nhrdmphudcqd763mt4ira6ubecqqgh.apps.googleusercontent.com.json
+├── daring-feat-465002-d8-521b4db713bd.json
+├── daring-feat-465002-d8-b70f55041d30.json
+├── docker-compose.yml
+├── docker-compose.yml.save
+├── frontend
+│   ├── app
+│   │   ├── admin
+│   │   │   ├── attendance
+│   │   │   │   └── page.tsx
+│   │   │   ├── dashboard
+│   │   │   │   └── page.tsx
+│   │   │   ├── employees
+│   │   │   │   └── page.tsx
+│   │   │   ├── leaves
+│   │   │   │   └── page.tsx
+│   │   │   └── payroll
+│   │   │       └── page.tsx
+│   │   ├── (auth)
+│   │   │   └── login
+│   │   │       └── page.tsx
+│   │   ├── components
+│   │   │   ├── ClientProviders.tsx
+│   │   │   ├── Layout.tsx
+│   │   │   ├── ProfileAvatar.tsx
+│   │   │   ├── ProfilePictureUploadModal.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── dashboard
+│   │   │   └── page.tsx
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   ├── manager
+│   │   │   └── dashboard
+│   │   │       └── page.tsx
+│   │   ├── page.tsx
+│   │   ├── services
+│   │   │   ├── apiService.ts
+│   │   │   └── authService.ts
+│   │   └── update-password
+│   │       └── page.tsx
+│   ├── components
+│   │   ├── theme-provider.tsx
+│   │   └── ui
+│   │       ├── accordion.tsx
+│   │       ├── alert-dialog.tsx
+│   │       ├── alert.tsx
+│   │       ├── aspect-ratio.tsx
+│   │       ├── avatar.tsx
+│   │       ├── badge.tsx
+│   │       ├── breadcrumb.tsx
+│   │       ├── button.tsx
+│   │       ├── calendar.tsx
+│   │       ├── card.tsx
+│   │       ├── carousel.tsx
+│   │       ├── chart.tsx
+│   │       ├── checkbox.tsx
+│   │       ├── collapsible.tsx
+│   │       ├── command.tsx
+│   │       ├── context-menu.tsx
+│   │       ├── dialog.tsx
+│   │       ├── drawer.tsx
+│   │       ├── dropdown-menu.tsx
+│   │       ├── form.tsx
+│   │       ├── hover-card.tsx
+│   │       ├── input-otp.tsx
+│   │       ├── input.tsx
+│   │       ├── label.tsx
+│   │       ├── menubar.tsx
+│   │       ├── navigation-menu.tsx
+│   │       ├── pagination.tsx
+│   │       ├── popover.tsx
+│   │       ├── progress.tsx
+│   │       ├── radio-group.tsx
+│   │       ├── resizable.tsx
+│   │       ├── scroll-area.tsx
+│   │       ├── select.tsx
+│   │       ├── separator.tsx
+│   │       ├── sheet.tsx
+│   │       ├── sidebar.tsx
+│   │       ├── skeleton.tsx
+│   │       ├── slider.tsx
+│   │       ├── sonner.tsx
+│   │       ├── switch.tsx
+│   │       ├── table.tsx
+│   │       ├── tabs.tsx
+│   │       ├── textarea.tsx
+│   │       ├── toaster.tsx
+│   │       ├── toast.tsx
+│   │       ├── toggle-group.tsx
+│   │       ├── toggle.tsx
+│   │       ├── tooltip.tsx
+│   │       ├── use-mobile.tsx
+│   │       └── use-toast.ts
+│   ├── components.json
+│   ├── hooks
+│   │   ├── use-mobile.tsx
+│   │   └── use-toast.ts
+│   ├── next.config.mjs
+│   ├── next-env.d.ts
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── pnpm-lock.yaml
+│   ├── postcss.config.mjs
+│   ├── public
+│   │   ├── placeholder.jpg
+│   │   ├── placeholder-logo.png
+│   │   ├── placeholder-logo.svg
+│   │   ├── placeholder.svg
+│   │   └── placeholder-user.jpg
+│   ├── src
+│   │   └── contexts
+│   │       └── AuthContext.tsx
+│   ├── styles
+│   │   └── globals.css
+│   ├── tailwind.config.ts
+│   └── tsconfig.json
+├── gmail_auth.py
 ├── hr_system.log
+├── hr_system_test.sql
 ├── __init__.py
 ├── key.py
 ├── media
 │   └── profile_pictures
 │       └── 85242afe-f871-4ce5-9ea5-8fd457b42eaf.jpg
+├── postgres-data
+├── prometheus
+│   └── prometheus.yml
 ├── README.md
 ├── requirements.txt
 ├── test_output.txt
@@ -89,6 +209,7 @@
 │   ├── test_auth.py
 │   ├── test_employees.py
 │   └── test_leave.py
+├── token.pickle
 └── tree.txt
 
-15 directories, 77 files
+41 directories, 172 files

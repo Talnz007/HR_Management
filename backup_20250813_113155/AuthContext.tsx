@@ -3,7 +3,6 @@
 import type React from "react"
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { authService } from "../services/authService"
-import { apiService } from "@/app/services/apiService"
 
 interface User {
   user_id: string
@@ -42,20 +41,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-  const initAuth = async () => {
-    const token = localStorage.getItem("access_token")
-    if (token) {
-      try {
-        const userData = await apiService.getMe() // real API
-        setUser(userData)
-      } catch {
-        localStorage.clear()
+    const initAuth = async () => {
+      const token = localStorage.getItem("access_token")
+      if (token) {
+        try {
+          // Verify token and get user info
+          const userData = await authService.getCurrentUser()
+          setUser(userData)
+        } catch (error) {
+          localStorage.removeItem("access_token")
+          localStorage.removeItem("refresh_token")
+        }
       }
+      setLoading(false)
     }
-    setLoading(false)
-  }
-  initAuth()
-}, [])
+
+    initAuth()
+  }, [])
 
   const login = async (username: string, password: string) => {
     const response = await authService.login(username, password)

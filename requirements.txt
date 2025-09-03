@@ -1,4 +1,8 @@
+google-api-python-client
 aiofiles==24.1.0
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
 aioredis==2.0.1
 aiosqlite==0.21.0
 alembic==1.16.4

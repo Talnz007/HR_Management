@@ -3,10 +3,10 @@
 
 import React, { useState } from "react";
 import { Container, Paper, TextField, Button, Typography, Box, Alert, CircularProgress, Link } from "@mui/material";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/src/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { authService } from "@/app/services/authService"; // Import the updated service
+import { authService } from "@/app/services/authService";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -32,7 +32,15 @@ export default function LoginPage() {
       toast.success("Login successful!");
       // The useEffect will handle the redirect
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Login failed");
+      console.error("Login error:", err);
+      // More specific error handling
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else if (err.message) {
+        setError(err.message);
+      } else {
+        setError("Login failed. Please try again.");
+      }
       toast.error("Login failed");
     } finally {
       setLoading(false);

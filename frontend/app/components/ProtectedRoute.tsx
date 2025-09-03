@@ -10,38 +10,61 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, isAuthenticated, isAdmin, loading } = useAuth();
+  const { user, isAuthenticated, isAdmin, isManager, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) {
-      return;
+      return; // Wait until authentication status is determined
     }
-    if (!isAuthenticated && pathname !== "/login") {
+
+    const isLoginPage = pathname === "/login";
+
+    if (!isAuthenticated && !isLoginPage) {
       router.push("/login");
       return;
     }
+
     if (isAuthenticated) {
-      const isAdminRoute = pathname.startsWith("/admin");
-      const isEmployeeRoute = pathname.startsWith("/employee");
-      if (isAdmin && isEmployeeRoute) {
-        router.push("/admin/dashboard");
+      // If authenticated user is on the login page, redirect them to their dashboard
+      if (isLoginPage) {
+        if (isAdmin) router.push("/admin/dashboard");
+        else if (isManager) router.push("/manager/dashboard");
+        else router.push("/dashboard");
         return;
       }
-      if (!isAdmin && isAdminRoute) {
-        router.push("/employee/dashboard");
+
+      const isAdminRoute = pathname.startsWith("/admin");
+      const isManagerRoute = pathname.startsWith("/manager");
+      
+      // If a non-admin tries to access an admin route, redirect
+      if (isAdminRoute && !isAdmin) {
+        router.push(isManager ? "/manager/dashboard" : "/dashboard");
         return;
+      }
+      
+      // If an employee tries to access a manager route, redirect
+      if (isManagerRoute && !isAdmin && !isManager) {
+          router.push("/dashboard");
+          return;
       }
     }
-  }, [loading, isAuthenticated, isAdmin, pathname, router]);
+  }, [loading, isAuthenticated, isAdmin, isManager, pathname, router]);
 
-  if (loading || !isAuthenticated) {
+  // Show a loading skeleton while checking auth, but not on the login page itself
+  if (loading && pathname !== '/login') {
     return (
       <div className="flex items-center justify-center h-screen">
         <Skeleton className="w-1/2 h-1/2 rounded-lg" />
       </div>
     );
+  }
+
+  // If not authenticated and not on the login page, the useEffect will redirect,
+  // so we can render null or a loader to prevent content flash.
+  if (!isAuthenticated && pathname !== '/login') {
+    return null; 
   }
 
   return <>{children}</>;
