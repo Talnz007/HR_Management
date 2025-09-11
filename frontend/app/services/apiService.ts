@@ -140,14 +140,21 @@ class ApiService {
 
   // Department endpoints
   async getDepartments() {
-    try {
-      const response = await this.api.get("/departments/");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching departments:", error);
-      return [];
-    }
+  try {
+    const response = await this.api.get("/departments/");
+
+    // Format the response to ensure it has manager_name for display
+    const enhancedDepartments = response.data.map((dept: any) => ({
+      ...dept,
+      manager_name: dept.manager ? `${dept.manager.first_name} ${dept.manager.last_name}` : "None"
+    }));
+
+    return enhancedDepartments;
+  } catch (error) {
+    console.error("Error fetching departments:", error);
+    return [];
   }
+}
 
   // Attendance endpoints
   async getAttendances() {
@@ -408,14 +415,13 @@ async getUserRole() {
 
 async getTeamMembers(managerId: string | null = null): Promise<Employee[]> {
   try {
-    // If no managerId is provided, use the current user's employee ID
-    if (!managerId) {
-      const profile = await this.getMyProfile();
-      managerId = profile.employee_id;
-    }
+    // Instead of client-side filtering, use the existing employees endpoint
+    // The backend already has department access control implemented
+    const employees = await this.getEmployees();
 
-    const employees: Employee[] = await this.getEmployees();
-    return employees.filter((emp: Employee) => emp.manager_id === managerId);
+    // The backend's filter_employees_by_department_access will
+    // automatically filter based on the user's department management role
+    return employees;
   } catch (error) {
     console.error("Error fetching team members:", error);
     return [];

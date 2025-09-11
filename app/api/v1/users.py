@@ -48,13 +48,8 @@ def read_users_me(current_user: dict = Depends(get_current_user), db: Session = 
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # --- THIS IS THE FIX ---
-    # Explicitly check if the user is an admin
-    is_admin = db.query(Admin).filter(Admin.user_id == user.user_id).first() is not None
-
-    # Add the role to the user object before returning it.
-    # Pydantic will pick this up if the schema is updated.
-    user.role = "admin" if is_admin else "employee"
+    # Use the role from the users table instead of overriding it
+    # No need to modify user.role as it already contains the correct value from the database
 
     return user
 

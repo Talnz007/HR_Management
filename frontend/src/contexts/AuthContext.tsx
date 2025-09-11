@@ -130,9 +130,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const isAdmin = user?.role === "admin";
-  const isManager = user?.role === "manager";
-  const isEmployee = user?.role === "employee";
+  const isAdmin = user?.role?.toLowerCase() === "admin";
+  const isManager = user?.role?.toLowerCase() === "manager";
+  const isEmployee = user?.role?.toLowerCase() === "employee";
 
   return (
     <AuthContext.Provider

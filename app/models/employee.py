@@ -49,8 +49,20 @@ class Employee(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
 
     user = relationship("User", back_populates="employee")
-    department = relationship("Department", back_populates="employees")
+    department = relationship(
+        "Department",
+        back_populates="employees",
+        foreign_keys=[department_id],
+        overlaps="managed_department"  # Resolves potential overlap warning
+    )
     manager = relationship("Employee", remote_side=[employee_id], back_populates="subordinates")
     subordinates = relationship("Employee", back_populates="manager")
     leaves = relationship("Leave", back_populates="employee")
     payrolls = relationship("Payroll", back_populates="employee")
+    # Add this to the existing Employee class
+    managed_department = relationship(
+        "Department",
+        back_populates="manager",
+        foreign_keys="Department.manager_id",
+        overlaps="department"  # Resolves potential overlap warning
+    )

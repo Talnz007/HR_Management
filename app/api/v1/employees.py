@@ -10,31 +10,54 @@ from app.schemas.user import UserResponse, UserRole
 from app.core.security import get_password_hash
 from datetime import datetime, timezone
 import logging
+from app.api.deps import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["employees"])
 
+
+# Update the list_employees function to filter by department access
 @router.get("/", response_model=List[EmployeeResponse])
-def list_employees(db: Session = Depends(get_db), current_user_payload: dict = Depends(require_role(["admin"]))):
-    """List all employees with their user roles (admin only)."""
-    employees = db.query(Employee).options(joinedload(Employee.user)).all()
-    
+def list_employees(
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(get_current_user),
+        skip: int = 0,
+        limit: int = 100
+):
+    """List employees with access control based on user role."""
+    from app.utils.access_control import filter_employees_by_department_access, is_admin
+
+    # Start with a base query that loads the user relationship
+    query = db.query(Employee).options(joinedload(Employee.user))
+
+    # Apply department access filtering
+    query = filter_employees_by_department_access(query, current_user, db)
+
+    # Apply pagination
+    employees = query.offset(skip).limit(limit).all()
+
     response_list = []
     for emp in employees:
         if emp.user:
-            # **FIX:** Let Pydantic validate from the ORM object first.
             emp_response = EmployeeResponse.model_validate(emp)
-            # **FIX:** Then, set the role from the related user object.
             emp_response.role = emp.user.role
             response_list.append(emp_response)
-            
+
     return response_list
 
+
+# Similarly update the get_employee endpoint to check department access
 @router.get("/{employee_id}", response_model=EmployeeResponse)
-def get_employee(employee_id: str, db: Session = Depends(get_db),
-                 current_user_payload: dict = Depends(require_role(["admin"]))):
-    """Get an employee by ID with their user role (admin only)."""
+def get_employee(
+        employee_id: str,
+        db: Session = Depends(get_db),
+        current_user: dict = Depends(get_current_user)
+):
+    """Get an employee by ID with access control."""
+    from app.utils.access_control import is_admin, get_accessible_department_ids
+
+    # Get the employee with their user data
     employee = db.query(Employee).options(joinedload(Employee.user)).filter(Employee.employee_id == employee_id).first()
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
@@ -42,7 +65,17 @@ def get_employee(employee_id: str, db: Session = Depends(get_db),
     if not employee.user:
         raise HTTPException(status_code=404, detail="Associated user account not found for this employee")
 
-    # **FIX:** Use the same safe pattern here.
+    # Check if user has access to this employee's department
+    is_user_admin = is_admin(current_user, db)
+    accessible_dept_ids = get_accessible_department_ids(current_user, db)
+
+    if not is_user_admin and str(employee.department_id) not in [str(d) for d in accessible_dept_ids]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this employee's data"
+        )
+
+    # Prepare the response
     emp_response = EmployeeResponse.model_validate(employee)
     emp_response.role = employee.user.role
     return emp_response
